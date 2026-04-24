@@ -1,0 +1,68 @@
+{
+  "name": "@aithos/protocol-client",
+  "version": "0.1.0-alpha.0",
+  "description": "Aithos protocol client — env-agnostic TypeScript implementation of signed identities, mandates, and ethos editions.",
+  "keywords": [
+    "aithos",
+    "protocol",
+    "identity",
+    "cryptography",
+    "ethos",
+    "did",
+    "ed25519",
+    "x25519",
+    "signed-data"
+  ],
+  "license": "BUSL-1.1",
+  "author": "Aithos",
+  "homepage": "https://aithos.be",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/aithos-protocol/protocol-client.git"
+  },
+  "bugs": {
+    "url": "https://github.com/aithos-protocol/protocol-client/issues"
+  },
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "files": [
+    "dist/**/*.js",
+    "dist/**/*.d.ts",
+    "README.md",
+    "LICENSE"
+  ],
+  "scripts": {
+    "build": "tsc",
+    "check-types": "tsc --noEmit",
+    "test": "npm run build && node --test dist/test/**/*.test.js",
+    "test:watch": "node --test --watch dist/test/**/*.test.js",
+    "clean": "rm -rf dist",
+    "prepublishOnly": "npm run clean && npm run build && npm test"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@aithos/protocol-core": "^0.3.0",
+    "@noble/ciphers": "^1.2.1",
+    "@noble/curves": "^1.8.1",
+    "@noble/ed25519": "^2.3.0",
+    "@noble/hashes": "^1.7.0"
+  },
+  "devDependencies": {
+    "@types/node": "^24.12.2",
+    "typescript": "^5.9.2"
+  },
+  "publishConfig": {
+    "access": "public",
+    "tag": "alpha"
+  }
+}
