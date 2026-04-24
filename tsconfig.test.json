@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json.schemastore.org/tsconfig",
+  "extends": "./tsconfig.json",
+  "compilerOptions": {
+    // Tests produce JS only — no .d.ts, no .d.ts.map. Node's --test
+    // runner picks up `.d.ts` via its `.ts` auto-discovery glob and
+    // counts each one as an empty "passing" test, which is confusing
+    // in CI output.
+    "declaration": false,
+    "declarationMap": false
+  },
+  "include": ["test/**/*.ts", "src/**/*.ts"],
+  "references": []
+}
