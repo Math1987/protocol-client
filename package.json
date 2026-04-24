@@ -18,10 +18,10 @@
   "homepage": "https://aithos.be",
   "repository": {
     "type": "git",
-    "url": "git+https://github.com/aithos-protocol/protocol-client.git"
+    "url": "git+https://github.com/Math1987/protocol-client.git"
   },
   "bugs": {
-    "url": "https://github.com/aithos-protocol/protocol-client/issues"
+    "url": "https://github.com/Math1987/protocol-client/issues"
   },
   "type": "module",
   "exports": {
