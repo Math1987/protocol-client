@@ -105,10 +105,25 @@ export function mandateToRecipients(
     x25519PublicKey: xPub,
   };
 
+  // Apply the same impliedRead semantics the platform applies on the
+  // server side: a delegate granted `ethos.write.X` MUST also be able
+  // to read X (otherwise it can't republish without losing existing
+  // content). So write.X implies read.X for the purpose of seeding
+  // recipients into the zone's wrap list.
   const out: { circle?: EncryptRecipient; self?: EncryptRecipient } = {};
   const scopes = mandate.scopes ?? [];
-  if (scopes.includes("ethos.read.circle")) out.circle = recipient;
-  if (scopes.includes("ethos.read.self")) out.self = recipient;
+  if (
+    scopes.includes("ethos.read.circle") ||
+    scopes.includes("ethos.write.circle")
+  ) {
+    out.circle = recipient;
+  }
+  if (
+    scopes.includes("ethos.read.self") ||
+    scopes.includes("ethos.write.self")
+  ) {
+    out.self = recipient;
+  }
   return out;
 }
 
