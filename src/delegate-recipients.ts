@@ -32,9 +32,14 @@ import type { SignedMandate } from "./crypto/mandate.js";
 /** Zones that support sealed delegate access at MVP. Public is plaintext. */
 export type SealedZone = "circle" | "self";
 
-const READ_SCOPE_FOR: Readonly<Record<SealedZone, string>> = {
-  circle: "ethos.read.circle",
-  self: "ethos.read.self",
+/**
+ * Per-zone scopes that warrant including a mandate in the wrap list.
+ * impliedRead: a delegate granted `write.X` must be able to decrypt X
+ * to republish, so we treat write.X as also implying read.X here.
+ */
+const ZONE_SCOPES: Readonly<Record<SealedZone, readonly string[]>> = {
+  circle: ["ethos.read.circle", "ethos.write.circle"],
+  self: ["ethos.read.self", "ethos.write.self"],
 };
 
 /** One page of mandate cards, shaped like `Page<MandateCard>` server-side. */
@@ -160,8 +165,9 @@ export async function fetchActiveDelegateRecipients(
   for (const row of rows) {
     if (typeof row.not_before === "number" && row.not_before > nowSec) continue;
     if (typeof row.not_after === "number" && row.not_after < nowSec) continue;
+    const rowScopes = row.scopes ?? [];
     for (const z of ["circle", "self"] as const) {
-      if ((row.scopes ?? []).includes(READ_SCOPE_FOR[z])) {
+      if (ZONE_SCOPES[z].some((s) => rowScopes.includes(s))) {
         perZoneCandidates[z].push(row);
       }
     }
