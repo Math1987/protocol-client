@@ -74,27 +74,49 @@ export class MintError extends Error {
   }
 }
 
-export async function mintDelegateBundle(args: MintArgs): Promise<MintResult> {
+/* -------------------------------------------------------------------------- */
+/*  signAndPublishMandate — for callers who already hold a grantee keypair    */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Args for `signAndPublishMandate`. Like `MintArgs` but the caller provides
+ * a fully-formed `Grantee` (including `pubkey`) instead of asking us to
+ * generate a keypair.
+ *
+ * This is what extension-style integrations want: the extension already
+ * holds its own delegate keypair, so the public half goes into the mandate
+ * here while the seed never leaves the extension.
+ */
+export interface SignAndPublishMandateArgs {
+  readonly owner: StoredIdentity;
+  readonly grantee: Grantee;
+  readonly actorSphere: Sphere;
+  readonly scopes: readonly string[];
+  readonly ttlSeconds: number;
+  readonly constraints?: MandateConstraints;
+  /** Override the default `https://api.aithos.be/mcp/primitives/write`. */
+  readonly writeEndpoint?: string;
+}
+
+/**
+ * Sign + publish a mandate without generating a grantee keypair. Throws
+ * `MintError` with `step` = `"sign"` or `"publish_mandate"` on failure.
+ *
+ * For the simpler "I want to mint AND get a downloadable bundle" use case,
+ * see `mintDelegateBundle`, which wraps this after generating a keypair.
+ */
+export async function signAndPublishMandate(
+  args: SignAndPublishMandateArgs,
+): Promise<SignedMandate> {
   const browserId = browserIdentityFromStored(args.owner);
+  const writeEndpoint = args.writeEndpoint ?? WRITE_ENDPOINT;
 
-  // 1. Fresh Ed25519 keypair for the grantee. The seed travels to the
-  //    delegate in the bundle; the pubkey is baked into the mandate.
-  const granteeKp = generateKeyPair();
-  const granteePubMb = ed25519PublicKeyToMultibase(granteeKp.publicKey);
-
-  const grantee: Grantee = {
-    id: args.granteeId,
-    pubkey: granteePubMb,
-    ...(args.granteeLabel ? { label: args.granteeLabel } : {}),
-  };
-
-  // 2. Sign the mandate with the owner's requested sphere.
   let mandate: SignedMandate;
   try {
     mandate = signMandate({
       issuer: browserId,
       actorSphere: args.actorSphere,
-      grantee,
+      grantee: args.grantee,
       scopes: args.scopes,
       ttlSeconds: args.ttlSeconds,
       ...(args.constraints ? { constraints: args.constraints } : {}),
@@ -103,20 +125,17 @@ export async function mintDelegateBundle(args: MintArgs): Promise<MintResult> {
     throw new MintError("sign", (e as Error).message);
   }
 
-  // 3. POST `aithos.publish_mandate`. The envelope is signed by the
-  //    owner's root key — publish_mandate itself is root-only (spec
-  //    §11.7: `mandate.issue` is a forbidden scope).
   const params = { mandate };
   const envelope = buildSignedEnvelope({
     iss: browserId.did,
-    aud: WRITE_ENDPOINT,
+    aud: writeEndpoint,
     method: "aithos.publish_mandate",
     verificationMethod: `${browserId.did}#root`,
     params,
     signer: browserId.root,
   });
 
-  const res = await fetch(WRITE_ENDPOINT, {
+  const res = await fetch(writeEndpoint, {
     method: "POST",
     headers: { "content-type": "application/json" },
     body: JSON.stringify({
@@ -136,6 +155,35 @@ export async function mintDelegateBundle(args: MintArgs): Promise<MintResult> {
       ...(body.error.data ?? {}),
     });
   }
+
+  return mandate;
+}
+
+/* -------------------------------------------------------------------------- */
+/*  mintDelegateBundle — generates keypair + signs + bundles                  */
+/* -------------------------------------------------------------------------- */
+
+export async function mintDelegateBundle(args: MintArgs): Promise<MintResult> {
+  // 1. Fresh Ed25519 keypair for the grantee.
+  const granteeKp = generateKeyPair();
+  const granteePubMb = ed25519PublicKeyToMultibase(granteeKp.publicKey);
+
+  const grantee: Grantee = {
+    id: args.granteeId,
+    pubkey: granteePubMb,
+    ...(args.granteeLabel ? { label: args.granteeLabel } : {}),
+  };
+
+  // 2 + 3. Delegate the sign/publish to the lower-level helper so the two
+  // entry points stay in sync (and we get one place to fix bugs).
+  const mandate = await signAndPublishMandate({
+    owner: args.owner,
+    grantee,
+    actorSphere: args.actorSphere,
+    scopes: args.scopes,
+    ttlSeconds: args.ttlSeconds,
+    ...(args.constraints ? { constraints: args.constraints } : {}),
+  });
 
   // 4. Package the bundle for the delegate.
   const bundle = {

@@ -17,10 +17,13 @@
 //   - `Manifest`         → types.ts (wire-format). crypto/manifest's authoring
 //                          structure stays internal; its builders are exported.
 
-export const VERSION = "0.1.0-alpha.2";
+export const VERSION = "0.1.0-alpha.3";
 
 // --- API client (JSON-RPC 2.0 to api.aithos.be) ---
 export * from "./api.js";
+
+// --- Connect handshake parser + sphere inference ---
+export * from "./connect-request.js";
 
 // --- DID helpers ---
 export * from "./did.js";
